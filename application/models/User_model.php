@@ -1,177 +1,139 @@
 <?php
 /**
- * 파일 위치: application/controllers/Login.php
- * 역할: 구글 OAuth 로그인 처리 및 세션 관리
+ * 파일 위치: application/models/User_model.php
+ * 역할: 사용자 데이터베이스 처리 (조회, 생성, 수정)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Login extends CI_Controller {
+class User_model extends CI_Model {
+
+	private $table = 'users';
 
 	public function __construct()
 	{
 		parent::__construct();
-		$this->load->library('session');
-		$this->load->model('User_model');
-		$this->load->helper('url');
-		$this->load->config('google');
+		$this->load->database();
 	}
 
 	/**
-	 * 로그인 페이지 표시
-	 */
-	public function index()
-	{
-		// 이미 로그인된 경우 대시보드로 이동
-		if ($this->session->userdata('logged_in')) {
-			redirect('dashboard');
-		}
-		$this->load->view('login');
-	}
-
-	/**
-	 * 구글 로그인 시작 - 구글 인증 페이지로 리다이렉트
-	 */
-	public function google_login()
-	{
-		$client_id = $this->config->item('google_client_id');
-		$redirect_uri = $this->config->item('google_redirect_uri');
-		$scope = 'email profile';
-
-		$auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
-				'client_id' => $client_id,
-				'redirect_uri' => $redirect_uri,
-				'response_type' => 'code',
-				'scope' => $scope,
-				'access_type' => 'offline',
-				'prompt' => 'consent'
-			]);
-
-		redirect($auth_url);
-	}
-
-	/**
-	 * 구글 OAuth 콜백 처리
-	 */
-	public function google_callback()
-	{
-		$code = $this->input->get('code');
-
-		if (empty($code)) {
-			$this->session->set_flashdata('error', '구글 인증에 실패했습니다.');
-			redirect('login');
-			return;
-		}
-
-		// Access Token 요청
-		$token_data = $this->_get_google_token($code);
-
-		if (!$token_data || !isset($token_data['access_token'])) {
-			$this->session->set_flashdata('error', '토큰 발급에 실패했습니다.');
-			redirect('login');
-			return;
-		}
-
-		// 사용자 정보 요청
-		$user_info = $this->_get_google_user_info($token_data['access_token']);
-
-		if (!$user_info || !isset($user_info['email'])) {
-			$this->session->set_flashdata('error', '사용자 정보를 가져올 수 없습니다.');
-			redirect('login');
-			return;
-		}
-
-		// 사용자 등록 또는 로그인 처리
-		$user = $this->User_model->find_or_create_google_user($user_info);
-
-		if ($user) {
-			// 세션 설정
-			$session_data = [
-				'user_id' => $user['id'],
-				'email' => $user['email'],
-				'name' => $user['name'],
-				'profile_image' => $user['profile_image'],
-				'logged_in' => TRUE
-			];
-			$this->session->set_userdata($session_data);
-
-			redirect('dashboard');
-		} else {
-			$this->session->set_flashdata('error', '로그인 처리 중 오류가 발생했습니다.');
-			redirect('login');
-		}
-	}
-
-	/**
-	 * 로그아웃 처리
-	 */
-	public function logout()
-	{
-		$this->session->sess_destroy();
-		redirect('login');
-	}
-
-	/**
-	 * 구글 Access Token 요청
-	 * @param string $code 인증 코드
-	 * @return array|null 토큰 데이터
-	 */
-	private function _get_google_token($code)
-	{
-		$url = 'https://oauth2.googleapis.com/token';
-
-		$post_data = [
-			'code' => $code,
-			'client_id' => $this->config->item('google_client_id'),
-			'client_secret' => $this->config->item('google_client_secret'),
-			'redirect_uri' => $this->config->item('google_redirect_uri'),
-			'grant_type' => 'authorization_code'
-		];
-
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_POST, TRUE);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post_data));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
-
-		$response = curl_exec($ch);
-		$error = curl_error($ch);
-		curl_close($ch);
-
-		if ($error) {
-			log_message('error', 'Google Token Request Error: ' . $error);
-			return null;
-		}
-
-		return json_decode($response, TRUE);
-	}
-
-	/**
-	 * 구글 사용자 정보 요청
-	 * @param string $access_token 액세스 토큰
+	 * 이메일로 사용자 조회
+	 * @param string $email 이메일
 	 * @return array|null 사용자 정보
 	 */
-	private function _get_google_user_info($access_token)
+	public function get_by_email($email)
 	{
-		$url = 'https://www.googleapis.com/oauth2/v2/userinfo';
+		$query = $this->db->get_where($this->table, ['email' => $email]);
+		return $query->row_array();
+	}
 
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, [
-			'Authorization: Bearer ' . $access_token
-		]);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
+	/**
+	 * Google ID로 사용자 조회
+	 * @param string $google_id 구글 ID
+	 * @return array|null 사용자 정보
+	 */
+	public function get_by_google_id($google_id)
+	{
+		$query = $this->db->get_where($this->table, ['google_id' => $google_id]);
+		return $query->row_array();
+	}
 
-		$response = curl_exec($ch);
-		$error = curl_error($ch);
-		curl_close($ch);
+	/**
+	 * 구글 사용자 찾기 또는 생성
+	 * @param array $user_info 구글에서 받은 사용자 정보
+	 * @return array|null 사용자 정보
+	 */
+	public function find_or_create_google_user($user_info)
+	{
+		// 구글 ID로 먼저 검색
+		$user = $this->get_by_google_id($user_info['id']);
 
-		if ($error) {
-			log_message('error', 'Google User Info Request Error: ' . $error);
-			return null;
+		if ($user) {
+			// 기존 사용자 정보 업데이트
+			$this->update($user['id'], [
+				'name' => $user_info['name'],
+				'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : null,
+				'updated_at' => date('Y-m-d H:i:s')
+			]);
+			return $this->get($user['id']);
 		}
 
-		return json_decode($response, TRUE);
+		// 이메일로 검색 (다른 방법으로 가입한 경우)
+		$user = $this->get_by_email($user_info['email']);
+
+		if ($user) {
+			// 구글 ID 연결
+			$this->update($user['id'], [
+				'google_id' => $user_info['id'],
+				'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : $user['profile_image'],
+				'updated_at' => date('Y-m-d H:i:s')
+			]);
+			return $this->get($user['id']);
+		}
+
+		// 신규 사용자 생성
+		$new_user_data = [
+			'google_id' => $user_info['id'],
+			'email' => $user_info['email'],
+			'name' => $user_info['name'],
+			'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : null,
+			'created_at' => date('Y-m-d H:i:s'),
+			'updated_at' => date('Y-m-d H:i:s')
+		];
+
+		$user_id = $this->create($new_user_data);
+
+		if ($user_id) {
+			return $this->get($user_id);
+		}
+
+		return null;
+	}
+
+	/**
+	 * 사용자 ID로 조회
+	 * @param int $id 사용자 ID
+	 * @return array|null 사용자 정보
+	 */
+	public function get($id)
+	{
+		$query = $this->db->get_where($this->table, ['id' => $id]);
+		return $query->row_array();
+	}
+
+	/**
+	 * 사용자 생성
+	 * @param array $data 사용자 데이터
+	 * @return int|false 생성된 사용자 ID
+	 */
+	public function create($data)
+	{
+		$result = $this->db->insert($this->table, $data);
+		if ($result) {
+			return $this->db->insert_id();
+		}
+		return false;
+	}
+
+	/**
+	 * 사용자 정보 수정
+	 * @param int $id 사용자 ID
+	 * @param array $data 수정할 데이터
+	 * @return bool 성공 여부
+	 */
+	public function update($id, $data)
+	{
+		$this->db->where('id', $id);
+		return $this->db->update($this->table, $data);
+	}
+
+	/**
+	 * 사용자 삭제
+	 * @param int $id 사용자 ID
+	 * @return bool 성공 여부
+	 */
+	public function delete($id)
+	{
+		$this->db->where('id', $id);
+		return $this->db->delete($this->table);
 	}
 }

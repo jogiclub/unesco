@@ -1,0 +1,7 @@
+# 파일 위치: .htaccess (프로젝트 루트)
+# 역할: URL 리라이팅 설정
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]
