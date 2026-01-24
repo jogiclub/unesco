@@ -1,1 +1,8 @@
-body {}
+/*기본*/
+html, body{font-family: "Pretendard", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif; font-size: 16px;}
+a{text-decoration: none; color: #0b0b0b}
+
+
+
+/*레이아웃*/
+.sidebar {position: fixed;height: 100%;border-top: 0 !important;border-bottom: 0 !important;width: 200px;background: #fff !important;}
