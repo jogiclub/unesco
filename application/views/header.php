@@ -1,9 +1,4 @@
-<?php
-/**
- * 파일 위치: application/views/header.php
- * 역할: 공통 헤더 및 사이드바 메뉴 (사용자 권한에 따른 메뉴 필터링 포함)
- */
-?>
+
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
