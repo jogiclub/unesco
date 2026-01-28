@@ -57,7 +57,7 @@
 				<a class="nav-link d-flex align-items-center gap-1 menu-21" href="/member"><i class="bi bi-people"></i> 카테고리 설정</a>
 			</li>
 			<li class="nav-item">
-				<a class="nav-link d-flex align-items-center gap-1 menu-22" href="/attendance"><i class="bi bi-clipboard-check"></i> AI 컨텍스트 설정</a>
+				<a class="nav-link d-flex align-items-center gap-1 menu-22" href="/context"><i class="bi bi-clipboard-check"></i> AI 컨텍스트 설정</a>
 			</li>
 			<li class="nav-item">
 				<a class="nav-link d-flex align-items-center gap-1 menu-23" href="/contents"><i class="bi bi-qr-code-scan"></i> 컨텐츠 관리</a>

@@ -43,6 +43,9 @@ $this->load->view('header');
 			<button type="button" class="btn btn-sm btn-primary" id="btnAdd">
 				<i class="bi bi-plus-lg"></i> 등록
 			</button>
+			<button type="button" class="btn btn-sm btn-success" id="btnCollector">
+				<i class="bi bi-cloud-download"></i> 컨텐츠수집기
+			</button>
 			<button type="button" class="btn btn-sm btn-danger" id="btnDeleteSelected">
 				<i class="bi bi-trash"></i> 선택삭제
 			</button>
@@ -119,6 +122,51 @@ $this->load->view('header');
 				<button type="button" class="btn btn-outline-danger" id="btnDelete" style="display:none;">삭제</button>
 			</div>
 		</form>
+	</div>
+</div>
+
+
+<!-- 컨텐츠 수집기 Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="collectorOffcanvas" aria-labelledby="collectorOffcanvasLabel">
+	<div class="offcanvas-header border-bottom">
+		<h5 class="offcanvas-title" id="collectorOffcanvasLabel">콘텐츠 수집기</h5>
+		<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+	</div>
+	<div class="offcanvas-body">
+		<form id="collectorForm">
+			<div class="mb-3">
+				<label for="collectorTitle" class="form-label">제목</label>
+				<input type="text" class="form-control" id="collectorTitle" name="title" placeholder="수집할 콘텐츠 제목">
+			</div>
+
+			<div class="mb-3">
+				<label for="collectorUrls" class="form-label">URL</label>
+				<textarea class="form-control" id="collectorUrls" name="urls" rows="5" placeholder="한 줄에 하나의 URL 입력"></textarea>
+				<div class="form-text">여러 URL을 수집하려면 줄바꿈으로 구분하세요.</div>
+			</div>
+
+			<div class="mb-3">
+				<label for="collectorContext" class="form-label">컨텍스트</label>
+				<textarea class="form-control" id="collectorContext" name="context" rows="4" placeholder="Gemini에게 전달할 정리 지침을 입력하세요.&#10;예: 제목, 요약, 핵심 키워드, 카테고리를 추출해줘"></textarea>
+			</div>
+
+			<div id="collectorProgress" class="mb-3 d-none">
+				<label class="form-label">수집 진행 상황</label>
+				<div class="progress mb-2">
+					<div class="progress-bar" role="progressbar" style="width: 0%"></div>
+				</div>
+				<div id="collectorLog" class="border rounded p-2 bg-light" style="height: 150px; overflow-y: auto; font-size: 12px;"></div>
+			</div>
+		</form>
+	</div>
+	<div class="offcanvas-footer border-top p-3">
+		<div class="d-flex justify-content-end gap-2">
+			<button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">취소</button>
+			<button type="button" class="btn btn-primary" id="btnStartCollect">
+				<span class="spinner-border spinner-border-sm d-none" role="status"></span>
+				수집시작
+			</button>
+		</div>
 	</div>
 </div>
 

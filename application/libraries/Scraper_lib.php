@@ -1,8 +1,5 @@
 <?php
-/**
- * 파일 위치: application/libraries/Scraper_lib.php
- * 역할: 웹페이지 스크래핑 라이브러리 - DOMDocument 사용 (PHP 내장)
- */
+
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Scraper_lib {

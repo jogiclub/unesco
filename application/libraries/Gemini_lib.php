@@ -1,8 +1,4 @@
 <?php
-/**
- * 파일 위치: application/libraries/Gemini_lib.php
- * 역할: Google Gemini API 호출 라이브러리
- */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Gemini_lib {

@@ -7,11 +7,15 @@
 $(document).ready(function() {
 	var grid = null;
 	var offcanvas = null;
+	var collectorOffcanvas = null;
+
+
 
 	// 초기화
 	initPQGrid();
 	bindEvents();
 	offcanvas = new bootstrap.Offcanvas(document.getElementById('contentsOffcanvas'));
+	collectorOffcanvas = new bootstrap.Offcanvas(document.getElementById('collectorOffcanvas'));
 
 	/**
 	 * PQGrid 초기화
@@ -360,8 +364,20 @@ $(document).ready(function() {
 			saveForm();
 		});
 
+
+
 		// 단건 삭제 버튼
 		$('#btnDelete').on('click', deleteItem);
+
+		// 컨텐츠수집기 버튼
+		$('#btnCollector').on('click', function() {
+			openCollector();
+		});
+
+		// 수집 시작 버튼
+		$('#btnStartCollect').on('click', function() {
+			startCollect();
+		});
 
 		// 전체 선택 체크박스
 		$(document).on('change', '#selectAllCheckbox', function() {
@@ -373,5 +389,254 @@ $(document).ready(function() {
 		$(document).on('change', '.content-checkbox', function() {
 			updateSelectAllCheckbox();
 		});
+
 	}
+
+
+	/**
+	 * 수집기 Offcanvas 열기
+	 */
+	function openCollector() {
+		$('#collectorForm')[0].reset();
+		$('#collectorProgress').addClass('d-none');
+		$('#collectorLog').empty();
+		$('.progress-bar').css('width', '0%');
+		$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+		collectorOffcanvas.show();
+	}
+
+
+	/**
+	 * 파일 위치: assets/js/contents.js
+	 * 역할: URL 순차 처리 함수 수정 - 요청 간격 증가
+	 * 수정 내용: 다음 URL 처리 전 대기 시간을 2초로 증가
+	 */
+
+	/**
+	 * URL 순차 처리
+	 */
+	function processUrls(urlList, title, context, index) {
+		if (index >= urlList.length) {
+			// 모든 URL 처리 완료
+			addCollectorLog('모든 URL 수집이 완료되었습니다.', 'success');
+			$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+			showToast('수집이 완료되었습니다.', 'success');
+			refreshGrid();
+			return;
+		}
+
+		var url = urlList[index].trim();
+		var progress = Math.round(((index + 1) / urlList.length) * 100);
+		$('.progress-bar').css('width', progress + '%').text(progress + '%');
+
+		addCollectorLog('[' + (index + 1) + '/' + urlList.length + '] 수집 중: ' + url);
+
+		ajaxRequest({
+			url: '/contents/collect',
+			type: 'POST',
+			timeout: 120000, // 타임아웃 2분으로 증가
+			data: {
+				url: url,
+				title: title,
+				context: context
+			},
+			success: function(res) {
+				if (res.success) {
+					addCollectorLog('성공: ' + (res.data.title || url), 'success');
+				} else {
+					addCollectorLog('실패: ' + res.message, 'error');
+				}
+				// 다음 URL 처리 (API Rate Limit 고려하여 2초 대기)
+				setTimeout(function() {
+					processUrls(urlList, title, context, index + 1);
+				}, 2000);
+			},
+			error: function(xhr, status, error) {
+				var errorMsg = '서버 통신 실패';
+				if (status === 'timeout') {
+					errorMsg = '요청 시간 초과';
+				}
+				addCollectorLog('오류: ' + errorMsg + ' - ' + url, 'error');
+				// 오류 발생 시 3초 대기 후 다음 URL
+				setTimeout(function() {
+					processUrls(urlList, title, context, index + 1);
+				}, 3000);
+			}
+		});
+	}
+
+	/**
+	 * 파일 위치: assets/js/contents.js
+	 * 역할: 컨텐츠 수집기 - 배치 처리 방식으로 변경
+	 * 수정 내용: 모든 URL 스크래핑 완료 후 Gemini 1회 호출
+	 */
+
+	/**
+	 * Gemini로 종합 처리 후 DB 저장 (1건)
+	 */
+	function processWithGemini(scrapedData, title, context) {
+		ajaxRequest({
+			url: '/contents/process_collected',
+			type: 'POST',
+			timeout: 180000,
+			data: {
+				scraped_data: scrapedData,
+				title: title,
+				context: context
+			},
+			success: function(res) {
+				$('.progress-bar').css('width', '100%').text('100%');
+
+				if (res.success) {
+					addCollectorLog('저장 완료: ' + res.data.title, 'success');
+					addCollectorLog('(' + res.data.source_count + '개 URL 종합)', 'success');
+
+					showToast(res.message, 'success');
+					refreshGrid();
+				} else {
+					addCollectorLog('처리 실패: ' + res.message, 'error');
+					showToast(res.message, 'error');
+				}
+
+				$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+			},
+			error: function(xhr, status) {
+				var errorMsg = status === 'timeout' ? '요청 시간 초과' : '서버 통신 실패';
+				addCollectorLog('Gemini 처리 오류: ' + errorMsg, 'error');
+				showToast(errorMsg, 'error');
+				$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+			}
+		});
+	}
+
+	/**
+	 * URL 순차 스크래핑
+	 */
+	function scrapeUrls(urlList, scrapedData, failedUrls, index, title, context) {
+		if (index >= urlList.length) {
+			addCollectorLog('스크래핑 완료: 성공 ' + scrapedData.length + '건, 실패 ' + failedUrls.length + '건', 'success');
+
+			if (scrapedData.length === 0) {
+				addCollectorLog('수집된 데이터가 없습니다.', 'error');
+				$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+				showToast('수집된 데이터가 없습니다.', 'error');
+				return;
+			}
+
+			addCollectorLog('Gemini 종합 분석 요청 중...');
+			$('.progress-bar').css('width', '80%').text('80%');
+
+			processWithGemini(scrapedData, title, context);
+			return;
+		}
+
+		var url = urlList[index].trim();
+		var progress = Math.round(((index + 1) / urlList.length) * 70);
+		$('.progress-bar').css('width', progress + '%').text(progress + '%');
+
+		addCollectorLog('[' + (index + 1) + '/' + urlList.length + '] 스크래핑: ' + truncateUrl(url));
+
+		ajaxRequest({
+			url: '/contents/scrape_url',
+			type: 'POST',
+			data: { url: url },
+			success: function(res) {
+				if (res.success) {
+					scrapedData.push(res.data);
+					addCollectorLog('  -> 성공: ' + (res.data.title || url).substring(0, 50), 'success');
+				} else {
+					failedUrls.push({ url: url, error: res.message });
+					addCollectorLog('  -> 실패: ' + res.message, 'error');
+				}
+				setTimeout(function() {
+					scrapeUrls(urlList, scrapedData, failedUrls, index + 1, title, context);
+				}, 300);
+			},
+			error: function() {
+				failedUrls.push({ url: url, error: '서버 통신 실패' });
+				addCollectorLog('  -> 오류: 서버 통신 실패', 'error');
+				setTimeout(function() {
+					scrapeUrls(urlList, scrapedData, failedUrls, index + 1, title, context);
+				}, 300);
+			}
+		});
+	}
+
+	/**
+	 * 수집 시작
+	 */
+	function startCollect() {
+		var title = $('#collectorTitle').val().trim();
+		var urls = $('#collectorUrls').val().trim();
+		var context = $('#collectorContext').val().trim();
+
+		if (!urls) {
+			showToast('URL을 입력해주세요.', 'warning');
+			$('#collectorUrls').focus();
+			return;
+		}
+
+		if (!context) {
+			showToast('컨텍스트를 입력해주세요.', 'warning');
+			$('#collectorContext').focus();
+			return;
+		}
+
+		var urlList = urls.split('\n').filter(function(url) {
+			return url.trim() !== '';
+		});
+
+		if (urlList.length === 0) {
+			showToast('유효한 URL이 없습니다.', 'warning');
+			return;
+		}
+
+		$('#btnStartCollect').prop('disabled', true).find('.spinner-border').removeClass('d-none');
+		$('#collectorProgress').removeClass('d-none');
+		$('#collectorLog').empty();
+		$('.progress-bar').css('width', '0%').text('0%');
+
+		addCollectorLog('URL 스크래핑 시작 (' + urlList.length + '건)');
+
+		var scrapedData = [];
+		var failedUrls = [];
+
+		scrapeUrls(urlList, scrapedData, failedUrls, 0, title, context);
+	}
+
+
+	/**
+	 * URL 길이 자르기
+	 */
+	function truncateUrl(url) {
+		if (url.length > 60) {
+			return url.substring(0, 57) + '...';
+		}
+		return url;
+	}
+
+
+
+	/**
+	 * 수집 로그 추가
+	 */
+	function addCollectorLog(message, type) {
+		var colorClass = '';
+		switch (type) {
+			case 'success':
+				colorClass = 'text-success';
+				break;
+			case 'error':
+				colorClass = 'text-danger';
+				break;
+			default:
+				colorClass = 'text-muted';
+		}
+
+		var time = new Date().toLocaleTimeString();
+		var logHtml = '<div class="' + colorClass + '">[' + time + '] ' + escapeHtml(message) + '</div>';
+		$('#collectorLog').append(logHtml);
+		$('#collectorLog').scrollTop($('#collectorLog')[0].scrollHeight);
+	}
+
 });
