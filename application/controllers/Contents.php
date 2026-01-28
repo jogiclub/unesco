@@ -146,8 +146,10 @@ class Contents extends CI_Controller {
 	}
 
 	/**
-	 * 파일 위치: application/controllers/Contents.php
-	 * 역할: 콘텐츠 수집 처리 (URL에서 데이터 가져오기, Gemini로 정리, DB 저장)
+	 * 단일 URL 콘텐츠 수집 (URL에서 데이터 가져오기, Gemini로 정리, DB 저장)
+	 * title: 사용자 입력값 그대로 사용
+	 * description: AI 분석 결과의 description
+	 * contents_json: context 요청사항에 대한 분석 결과
 	 */
 	public function collect()
 	{
@@ -188,13 +190,14 @@ class Contents extends CI_Controller {
 		$prompt .= "URL: {$url}\n";
 		$prompt .= "페이지 제목: {$scraped['data']['title']}\n\n";
 		$prompt .= "콘텐츠:\n{$scraped['data']['content']}\n\n";
-		$prompt .= "요청사항: {$context}\n\n";
+		$prompt .= "=== 요청사항 ===\n";
+		$prompt .= "{$context}\n\n";
 		$prompt .= "반드시 아래 JSON 형식으로만 응답해주세요:\n";
 		$prompt .= "{\n";
-		$prompt .= '  "title": "정리된 제목",' . "\n";
-		$prompt .= '  "description": "간단한 설명 (200자 이내)",' . "\n";
-		$prompt .= '  "details": { "추가 정보 키": "값" }' . "\n";
-		$prompt .= "}";
+		$prompt .= '  "description": "콘텐츠에 대한 간단한 설명 (200자 이내)",' . "\n";
+		$prompt .= '  "analysis": { "요청사항에 맞는 키": "값" }' . "\n";
+		$prompt .= "}\n";
+		$prompt .= "\n주의: analysis 객체 안에 요청사항({$context})에서 요구하는 정보를 키-값 형태로 정리해주세요.";
 
 		$gemini_result = $this->gemini_lib->generate($prompt);
 
@@ -206,25 +209,28 @@ class Contents extends CI_Controller {
 		// 3. Gemini 응답 파싱
 		$parsed = $this->_parse_gemini_response($gemini_result['data']);
 
-		if (!$parsed) {
-			// 파싱 실패 시 기본값 사용
-			$parsed = [
-				'title' => $title ?: $scraped['data']['title'],
-				'description' => mb_substr($scraped['data']['content'], 0, 200),
-				'details' => ['source_url' => $url, 'original_title' => $scraped['data']['title']]
-			];
+		// description 처리
+		$description = '';
+		if ($parsed && isset($parsed['description'])) {
+			$description = $parsed['description'];
+		} else {
+			$description = mb_substr($scraped['data']['content'], 0, 200);
 		}
+
+		// contents_json 구성
+		$contents_json = [
+			'source_url' => $url,
+			'scraped_title' => $scraped['data']['title'],
+			'context' => $context,
+			'analysis' => $parsed['analysis'] ?? [],
+			'collected_at' => date('Y-m-d H:i:s')
+		];
 
 		// 4. DB 저장
 		$data = [
-			'title' => $parsed['title'] ?: ($title ?: $scraped['data']['title']),
-			'description' => $parsed['description'] ?: '',
-			'contents_json' => json_encode([
-				'source_url' => $url,
-				'scraped_title' => $scraped['data']['title'],
-				'details' => $parsed['details'] ?? [],
-				'collected_at' => date('Y-m-d H:i:s')
-			], JSON_UNESCAPED_UNICODE),
+			'title' => $title ?: $scraped['data']['title'],  // 사용자 입력 제목, 없으면 스크래핑 제목
+			'description' => $description,
+			'contents_json' => json_encode($contents_json, JSON_UNESCAPED_UNICODE),
 			'regi_date' => date('Y-m-d H:i:s'),
 			'regi_id' => $user_email,
 			'modi_date' => date('Y-m-d H:i:s'),
@@ -247,8 +253,10 @@ class Contents extends CI_Controller {
 
 
 	/**
-	 * 파일 위치: application/controllers/Contents.php
-	 * 역할: 수집된 콘텐츠들을 Gemini로 종합 처리 후 1건으로 DB 저장
+	 * 수집된 콘텐츠들을 Gemini로 종합 처리 후 1건으로 DB 저장
+	 * title: 사용자 입력값 그대로 사용
+	 * description: AI 분석 결과의 description
+	 * contents_json: context 요청사항에 대한 분석 결과
 	 */
 	public function process_collected()
 	{
@@ -270,8 +278,9 @@ class Contents extends CI_Controller {
 		$this->load->library('Gemini_lib');
 
 		// Gemini 프롬프트 구성 (모든 URL 데이터를 종합)
-		$prompt = "다음 여러 웹페이지의 콘텐츠를 분석하고 하나의 종합된 정보로 정리해주세요.\n\n";
-		$prompt .= "요청사항: {$context}\n\n";
+		$prompt = "다음 여러 웹페이지의 콘텐츠를 분석하고 요청사항에 맞게 정리해주세요.\n\n";
+		$prompt .= "=== 요청사항 ===\n";
+		$prompt .= "{$context}\n\n";
 		$prompt .= "=== 수집된 웹페이지 목록 (" . count($scraped_data) . "건) ===\n\n";
 
 		$source_urls = [];
@@ -285,17 +294,15 @@ class Contents extends CI_Controller {
 		}
 
 		$prompt .= "=== 응답 형식 ===\n";
-		$prompt .= "위 모든 페이지의 내용을 종합하여 하나의 결과물로 정리해주세요.\n";
+		$prompt .= "위 모든 페이지의 내용을 종합하여 요청사항에 맞게 정리해주세요.\n";
 		$prompt .= "반드시 아래 JSON 형식으로만 응답해주세요. 다른 텍스트 없이 JSON만 출력하세요:\n";
 		$prompt .= "{\n";
-		$prompt .= '  "title": "종합된 제목",' . "\n";
-		$prompt .= '  "description": "종합된 설명 (300자 이내)",' . "\n";
-		$prompt .= '  "details": {' . "\n";
-		$prompt .= '    "summary": "전체 내용 요약",' . "\n";
-		$prompt .= '    "keywords": ["키워드1", "키워드2", "키워드3"],' . "\n";
-		$prompt .= '    "key_points": ["핵심내용1", "핵심내용2"]' . "\n";
+		$prompt .= '  "description": "수집된 콘텐츠에 대한 종합 설명 (300자 이내)",' . "\n";
+		$prompt .= '  "analysis": {' . "\n";
+		$prompt .= '    "요청사항에 맞는 키": "요청사항에 맞는 값"' . "\n";
 		$prompt .= '  }' . "\n";
 		$prompt .= "}\n";
+		$prompt .= "\n주의: analysis 객체 안에 요청사항({$context})에서 요구하는 정보를 키-값 형태로 정리해주세요.";
 
 		$gemini_result = $this->gemini_lib->generate($prompt);
 
@@ -307,15 +314,6 @@ class Contents extends CI_Controller {
 		// Gemini 응답 파싱
 		$parsed = $this->_parse_gemini_response($gemini_result['data']);
 
-		if (!$parsed) {
-			// 파싱 실패 시 기본값 사용
-			$parsed = [
-				'title' => $title ?: '수집된 콘텐츠',
-				'description' => '총 ' . count($scraped_data) . '개 URL에서 수집된 콘텐츠입니다.',
-				'details' => []
-			];
-		}
-
 		// 원본 스크래핑 데이터 정리
 		$sources = [];
 		foreach ($scraped_data as $item) {
@@ -326,16 +324,29 @@ class Contents extends CI_Controller {
 			];
 		}
 
-		// DB 저장 (1건으로 종합)
+		// description 처리
+		$description = '';
+		if ($parsed && isset($parsed['description'])) {
+			$description = $parsed['description'];
+		} else {
+			// 파싱 실패 시 기본값
+			$description = '총 ' . count($scraped_data) . '개 URL에서 수집된 콘텐츠입니다.';
+		}
+
+		// contents_json 구성 - context 요청사항 분석 결과 포함
+		$contents_json = [
+			'sources' => $sources,
+			'source_count' => count($scraped_data),
+			'context' => $context,
+			'analysis' => $parsed['analysis'] ?? [],
+			'collected_at' => date('Y-m-d H:i:s')
+		];
+
+		// DB 저장
 		$data = [
-			'title' => $title ?: ($parsed['title'] ?? '수집된 콘텐츠'),
-			'description' => $parsed['description'] ?? '',
-			'contents_json' => json_encode([
-				'sources' => $sources,
-				'source_count' => count($scraped_data),
-				'details' => $parsed['details'] ?? [],
-				'collected_at' => date('Y-m-d H:i:s')
-			], JSON_UNESCAPED_UNICODE),
+			'title' => $title ?: '수집된 콘텐츠',  // 사용자 입력 제목 그대로 사용
+			'description' => $description,
+			'contents_json' => json_encode($contents_json, JSON_UNESCAPED_UNICODE),
 			'regi_date' => date('Y-m-d H:i:s'),
 			'regi_id' => $user_email,
 			'modi_date' => date('Y-m-d H:i:s'),
@@ -358,7 +369,6 @@ class Contents extends CI_Controller {
 			echo json_encode(['success' => FALSE, 'message' => 'DB 저장 실패']);
 		}
 	}
-
 	/**
 	 * Gemini 응답 JSON 파싱
 	 * @param string $response Gemini 응답 텍스트
@@ -439,6 +449,32 @@ class Contents extends CI_Controller {
 			}
 		}
 		return [];
+	}
+
+	/**
+	 * 마지막 컨텍스트 조회 (AJAX)
+	 */
+	public function get_last_context()
+	{
+		$this->load->model('Context_model');
+
+		$context = $this->Context_model->get_last();
+
+		if ($context) {
+			echo json_encode([
+				'success' => TRUE,
+				'data' => [
+					'idx' => $context['idx'],
+					'title' => $context['title'],
+					'context_json' => $context['context_json']
+				]
+			]);
+		} else {
+			echo json_encode([
+				'success' => FALSE,
+				'message' => '저장된 컨텍스트가 없습니다.'
+			]);
+		}
 	}
 
 }

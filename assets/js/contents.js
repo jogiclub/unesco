@@ -402,9 +402,28 @@ $(document).ready(function() {
 		$('#collectorLog').empty();
 		$('.progress-bar').css('width', '0%');
 		$('#btnStartCollect').prop('disabled', false).find('.spinner-border').addClass('d-none');
+
+		// 마지막 컨텍스트 불러오기
+		loadLastContext();
+
 		collectorOffcanvas.show();
 	}
 
+
+	/**
+	 * 마지막 컨텍스트 불러오기
+	 */
+	function loadLastContext() {
+		ajaxRequest({
+			url: '/contents/get_last_context',
+			type: 'GET',
+			success: function(res) {
+				if (res.success && res.data.context_json) {
+					$('#collectorContext').val(res.data.context_json);
+				}
+			}
+		});
+	}
 
 	/**
 	 * 파일 위치: assets/js/contents.js

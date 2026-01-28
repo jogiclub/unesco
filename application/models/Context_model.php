@@ -41,4 +41,21 @@ class Context_model extends CI_Model {
 		$this->db->where('idx', $idx);
 		return $this->db->update($this->table, $data);
 	}
+
+
+	/**
+	 * 마지막 컨텍스트 조회
+	 * @return array|null
+	 */
+	public function get_last()
+	{
+		$this->db->select('*');
+		$this->db->from($this->table);
+		$this->db->where('del_yn', 0);
+		$this->db->order_by('idx', 'DESC');
+		$this->db->limit(1);
+
+		$query = $this->db->get();
+		return $query->row_array();
+	}
 }

@@ -66,8 +66,27 @@ class Gemini_lib {
 		}
 
 		if ($http_code !== 200) {
+			// 상세 오류 메시지 파싱
+			$error_detail = '';
+			$result = json_decode($response, TRUE);
+			if (isset($result['error']['message'])) {
+				$error_detail = $result['error']['message'];
+			}
+
 			log_message('error', 'Gemini API HTTP Error: ' . $http_code . ' Response: ' . $response);
-			return ['success' => FALSE, 'message' => 'API 오류 (HTTP ' . $http_code . ')'];
+
+			// 403 오류 상세 안내
+			if ($http_code === 403) {
+				$message = 'API 접근 거부 (HTTP 403)';
+				if ($error_detail) {
+					$message .= ' - ' . $error_detail;
+				} else {
+					$message .= ' - API 키 확인 또는 지역/할당량 제한 확인 필요';
+				}
+				return ['success' => FALSE, 'message' => $message];
+			}
+
+			return ['success' => FALSE, 'message' => 'API 오류 (HTTP ' . $http_code . ')' . ($error_detail ? ' - ' . $error_detail : '')];
 		}
 
 		$result = json_decode($response, TRUE);
