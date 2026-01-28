@@ -73,7 +73,7 @@ $this->load->view('header');
 
 			<div class="mb-3">
 				<label for="formDescription" class="form-label">설명</label>
-				<textarea class="form-control" id="formDescription" name="description" rows="4"></textarea>
+				<textarea class="form-control" id="formDescription" name="description" rows="4" style="overflow: auto; white-space: break-spaces"></textarea>
 			</div>
 
 			<div class="mb-3">
@@ -141,13 +141,13 @@ $this->load->view('header');
 
 			<div class="mb-3">
 				<label for="collectorUrls" class="form-label">URL</label>
-				<textarea class="form-control" id="collectorUrls" name="urls" rows="5" placeholder="한 줄에 하나의 URL 입력"></textarea>
+				<textarea class="form-control" id="collectorUrls" name="urls" rows="5" placeholder="한 줄에 하나의 URL 입력" style="overflow: auto; white-space: pre"></textarea>
 				<div class="form-text">여러 URL을 수집하려면 줄바꿈으로 구분하세요.</div>
 			</div>
 
 			<div class="mb-3">
 				<label for="collectorContext" class="form-label">컨텍스트</label>
-				<textarea class="form-control" id="collectorContext" name="context" rows="4" placeholder="Gemini에게 전달할 정리 지침을 입력하세요.&#10;예: 제목, 요약, 핵심 키워드, 카테고리를 추출해줘"></textarea>
+				<textarea class="form-control" id="collectorContext" name="context" rows="8" placeholder="Gemini에게 전달할 정리 지침을 입력하세요.&#10;예: 제목, 요약, 핵심 키워드, 카테고리를 추출해줘" style="overflow: auto; white-space: pre"></textarea>
 			</div>
 
 			<div id="collectorProgress" class="mb-3 d-none">
