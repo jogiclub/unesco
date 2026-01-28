@@ -107,6 +107,10 @@ class Login extends CI_Controller {
 	public function logout()
 	{
 		$this->session->sess_destroy();
+		$this->output->set_header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+		$this->output->set_header('Pragma: no-cache');
+		$this->input->set_cookie('ci_session', '', time() - 3600);
+		$this->input->set_cookie('activeOrg', '', time() - 3600);
 		redirect('login');
 	}
 

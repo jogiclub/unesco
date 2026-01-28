@@ -32,5 +32,56 @@
 <link rel="stylesheet" href="/assets/css/common.css?<?php echo WB_VERSION; ?>">
 
 
-<div>
-	<main>
+<?php if ($this->session->userdata('logged_in')): ?>
+
+<div class="container">
+	<header class="d-flex justify-content-between align-items-center border-bottom py-3">
+		<h1 class="logo fw-bold mb-0">
+			<a href="/"><i class="bi bi-bookmark-star-fill"></i> UNESCOS</a>
+		</h1>
+		<button class="btn btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions"><i class="bi bi-list"></i></button>
+	</header>
+</div>
+<div class="offcanvas offcanvas-end" data-bs-scroll="true" tabindex="-1" id="offcanvasWithBothOptions" aria-labelledby="offcanvasWithBothOptionsLabel">
+	<div class="offcanvas-header">
+		<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+	</div>
+	<div class="offcanvas-body">
+		<!-- OVERVIEW 섹션 -->
+		<small class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-3 mb-1 text-body-secondary text-uppercase">OVERVIEW</small>
+		<ul class="nav flex-column mb-auto">
+			<li class="nav-item">
+				<a class="nav-link d-flex align-items-center gap-1 menu-11" aria-current="page" href="/dashboard"><i class="bi bi-file-earmark-ruled"></i> 대시보드</a>
+			</li>
+		</ul>
+
+		<!-- MEMBER 섹션 -->
+		<small class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-3 mb-1 text-body-secondary text-uppercase">CONTENTS</small>
+		<ul class="nav flex-column mb-auto">
+			<li class="nav-item">
+				<a class="nav-link d-flex align-items-center gap-1 menu-21" href="/member"><i class="bi bi-people"></i> 카테고리 설정</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link d-flex align-items-center gap-1 menu-22" href="/attendance"><i class="bi bi-clipboard-check"></i> AI 컨텍스트 설정</a>
+			</li>
+			<li class="nav-item">
+				<a class="nav-link d-flex align-items-center gap-1 menu-23" href="/contents"><i class="bi bi-qr-code-scan"></i> 컨텐츠 관리</a>
+			</li>
+		</ul>
+
+
+
+		<ul class="nav flex-column mb-auto">
+			<li class="nav-item">
+				<a class="nav-link d-flex align-items-center gap-1 menu-logout" href="/login/logout">
+					<i class="bi bi-box-arrow-right"></i> 로그아웃
+				</a>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<?php endif; ?>
+<main>
+
+

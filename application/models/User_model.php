@@ -7,7 +7,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class User_model extends CI_Model {
 
-	private $table = 'users';
+	private $table = 'wb_users';
 
 	public function __construct()
 	{
@@ -52,7 +52,7 @@ class User_model extends CI_Model {
 			$this->update($user['id'], [
 				'name' => $user_info['name'],
 				'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : null,
-				'updated_at' => date('Y-m-d H:i:s')
+				'modi_date' => date('Y-m-d H:i:s')
 			]);
 			return $this->get($user['id']);
 		}
@@ -65,7 +65,7 @@ class User_model extends CI_Model {
 			$this->update($user['id'], [
 				'google_id' => $user_info['id'],
 				'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : $user['profile_image'],
-				'updated_at' => date('Y-m-d H:i:s')
+				'modi_date' => date('Y-m-d H:i:s')
 			]);
 			return $this->get($user['id']);
 		}
@@ -76,8 +76,8 @@ class User_model extends CI_Model {
 			'email' => $user_info['email'],
 			'name' => $user_info['name'],
 			'profile_image' => isset($user_info['picture']) ? $user_info['picture'] : null,
-			'created_at' => date('Y-m-d H:i:s'),
-			'updated_at' => date('Y-m-d H:i:s')
+			'regi_date' => date('Y-m-d H:i:s'),
+			'modi_date' => date('Y-m-d H:i:s')
 		];
 
 		$user_id = $this->create($new_user_data);

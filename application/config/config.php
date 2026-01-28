@@ -23,8 +23,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') ? 'https' : 'http')
-	. '://' . $_SERVER['HTTP_HOST'] . '/';
+$config['base_url'] = 'https://unesco.webhows.com';
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +35,7 @@ $config['base_url'] = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') ?
 | variable so that it is blank.
 |
 */
-$config['index_page'] = 'index.php';
+$config['index_page'] = '';
 
 /*
 |--------------------------------------------------------------------------
@@ -531,3 +530,12 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Gemini API Settings
+|--------------------------------------------------------------------------
+*/
+$config['gemini_api_key'] = 'AIzaSyALR2ykiC5WDWba8tGIVgVW1GKgOQt2wW4';

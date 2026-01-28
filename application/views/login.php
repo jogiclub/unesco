@@ -8,11 +8,11 @@ $this->load->view('header');
 
 <div class="container">
 	<div class="row justify-content-center align-items-center min-vh-100">
-		<div class="col-12 col-sm-5 col-md-4 col-lg-3">
+		<div class="col-12 col-sm-5 col-md-4">
+			<h4 class="text-center mb-4">UNESCOS<br/>콘텐츠 관리시스템</h4>
 			<div class="card shadow">
 				<div class="card-body p-4">
 					<h2 class="text-center mb-4">로그인</h2>
-
 					<!-- 에러 메시지 표시 영역 -->
 					<div id="login-message"></div>
 
