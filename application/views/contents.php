@@ -40,11 +40,9 @@ $this->load->view('header');
 			</div>
 		</div>
 		<div class="d-flex gap-2">
-			<button type="button" class="btn btn-sm btn-primary" id="btnAdd">
-				<i class="bi bi-plus-lg"></i> 등록
-			</button>
+
 			<button type="button" class="btn btn-sm btn-success" id="btnCollector">
-				<i class="bi bi-cloud-download"></i> 컨텐츠수집기
+				<i class="bi bi-cloud-download"></i> 컨텐츠수집
 			</button>
 			<button type="button" class="btn btn-sm btn-danger" id="btnDeleteSelected">
 				<i class="bi bi-trash"></i> 선택삭제
@@ -55,25 +53,44 @@ $this->load->view('header');
 	<!-- PQGrid 컨테이너 -->
 	<div id="contentsGrid"></div>
 </div>
-
-<!-- 컨텐츠 수정/등록 Offcanvas -->
+<!-- 컨텐츠 수정 Offcanvas -->
 <div class="offcanvas offcanvas-end" tabindex="-1" id="contentsOffcanvas" aria-labelledby="contentsOffcanvasLabel">
-	<div class="offcanvas-header">
-		<h5 class="offcanvas-title" id="contentsOffcanvasLabel">컨텐츠 정보</h5>
+	<div class="offcanvas-header border-bottom">
+		<h5 class="offcanvas-title" id="contentsOffcanvasLabel">컨텐츠 수정</h5>
 		<button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 	</div>
 	<div class="offcanvas-body">
+		<!-- 재수집 버튼 -->
+		<div class="d-grid gap-2 mb-3">
+			<button type="button" class="btn btn-outline-primary" id="btnRecollect">
+				<span class="spinner-border spinner-border-sm d-none" role="status"></span>
+				재수집
+			</button>
+		</div>
+
 		<form id="contentsForm">
 			<input type="hidden" id="formIdx" name="idx">
 
 			<div class="mb-3">
-				<label for="formTitle" class="form-label">타이틀 <span class="text-danger">*</span></label>
+				<label for="formTitle" class="form-label">타이틀</label>
 				<input type="text" class="form-control" id="formTitle" name="title" required>
 			</div>
-
 			<div class="mb-3">
 				<label for="formDescription" class="form-label">설명</label>
-				<textarea class="form-control" id="formDescription" name="description" rows="4" style="overflow: auto; white-space: break-spaces"></textarea>
+				<textarea class="form-control" id="formDescription" name="description" rows="3" style="overflow: auto; white-space: pre"></textarea>
+			</div>
+
+			<!-- 수집 URL 목록 (수정 가능) -->
+			<div class="mb-3">
+				<label for="formSourceUrls" class="form-label">수집 URL 목록</label>
+				<textarea class="form-control" id="formSourceUrls" name="source_urls" rows="4" placeholder="URL을 줄바꿈으로 구분하여 입력" style="overflow: auto; white-space: pre"></textarea>
+				<div class="form-text">URL을 추가하거나 수정한 후 저장할 수 있습니다.</div>
+			</div>
+
+			<!-- 분석 결과 JSON (읽기 전용) -->
+			<div class="mb-3">
+				<label for="formContentsJson" class="form-label">분석 결과 (JSON)</label>
+				<textarea class="form-control" id="formContentsJson" rows="8" readonly></textarea>
 			</div>
 
 			<div class="mb-3">
@@ -85,7 +102,6 @@ $this->load->view('header');
 					<option value="3">분류3</option>
 				</select>
 			</div>
-
 			<div class="mb-3">
 				<label for="formNationId" class="form-label">국가</label>
 				<select class="form-select" id="formNationId" name="nation_id">
@@ -96,8 +112,8 @@ $this->load->view('header');
 				</select>
 			</div>
 
-			<!-- 읽기 전용 정보 (수정 시에만 표시) -->
-			<div id="readonlyInfo" style="display:none;">
+			<!-- 읽기 전용 정보 -->
+			<div id="readonlyInfo">
 				<hr>
 				<div class="mb-3">
 					<label class="form-label text-muted">등록일</label>
@@ -119,7 +135,7 @@ $this->load->view('header');
 
 			<div class="d-grid gap-2 mt-4">
 				<button type="submit" class="btn btn-primary">저장</button>
-				<button type="button" class="btn btn-outline-danger" id="btnDelete" style="display:none;">삭제</button>
+				<button type="button" class="btn btn-outline-danger" id="btnDelete">삭제</button>
 			</div>
 		</form>
 	</div>

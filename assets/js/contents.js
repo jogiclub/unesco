@@ -204,46 +204,62 @@ $(document).ready(function() {
 	}
 
 	/**
-	 * 상세/등록 오프캔버스 열기
+	 * 상세 오프캔버스 열기 (수정 전용)
 	 */
 	function openDetail(idx) {
 		resetForm();
 
-		if (idx) {
-			// 수정 모드
-			$('#contentsOffcanvasLabel').text('컨텐츠 수정');
-			$('#btnDelete').show();
-			$('#readonlyInfo').show();
-
-			ajaxRequest({
-				url: '/contents/get_detail',
-				type: 'GET',
-				data: { idx: idx },
-				success: function(res) {
-					if (res.success) {
-						var data = res.data;
-						$('#formIdx').val(data.idx);
-						$('#formTitle').val(data.title);
-						$('#formDescription').val(data.description);
-						$('#formCategoryId').val(data.category_id);
-						$('#formNationId').val(data.nation_id);
-						$('#infoRegiDate').text(data.regi_date || '-');
-						$('#infoRegiId').text(data.regi_id || '-');
-						$('#infoModiDate').text(data.modi_date || '-');
-						$('#infoModiId').text(data.modi_id || '-');
-					} else {
-						showToast(res.message, 'error');
-					}
-				}
-			});
-		} else {
-			// 등록 모드
-			$('#contentsOffcanvasLabel').text('컨텐츠 등록');
-			$('#btnDelete').hide();
-			$('#readonlyInfo').hide();
+		if (!idx) {
+			return;
 		}
 
-		offcanvas.show();
+		ajaxRequest({
+			url: '/contents/get_detail',
+			type: 'GET',
+			data: { idx: idx },
+			success: function(res) {
+				if (res.success) {
+					var data = res.data;
+					$('#formIdx').val(data.idx);
+					$('#formTitle').val(data.title);
+					$('#formDescription').val(data.description);
+					$('#formCategoryId').val(data.category_id);
+					$('#formNationId').val(data.nation_id);
+					$('#infoRegiDate').text(data.regi_date || '-');
+					$('#infoRegiId').text(data.regi_id || '-');
+					$('#infoModiDate').text(data.modi_date || '-');
+					$('#infoModiId').text(data.modi_id || '-');
+
+					// 수집 URL 목록 표시
+					if (data.source_urls) {
+						try {
+							var urls = JSON.parse(data.source_urls);
+							$('#formSourceUrls').val(urls.join('\n'));
+						} catch (e) {
+							$('#formSourceUrls').val('');
+						}
+					} else {
+						$('#formSourceUrls').val('');
+					}
+
+					// 분석 결과 JSON 표시
+					if (data.contents_json) {
+						try {
+							var jsonObj = JSON.parse(data.contents_json);
+							$('#formContentsJson').val(JSON.stringify(jsonObj, null, 2));
+						} catch (e) {
+							$('#formContentsJson').val('');
+						}
+					} else {
+						$('#formContentsJson').val('');
+					}
+
+					offcanvas.show();
+				} else {
+					showToast(res.message, 'error');
+				}
+			}
+		});
 	}
 
 	/**
@@ -253,7 +269,10 @@ $(document).ready(function() {
 		$('#contentsForm')[0].reset();
 		$('#formIdx').val('');
 		$('#infoRegiDate, #infoRegiId, #infoModiDate, #infoModiId').text('');
+		$('#formSourceUrls').val('');
+		$('#formContentsJson').val('');
 	}
+
 
 	/**
 	 * 폼 저장
@@ -350,11 +369,6 @@ $(document).ready(function() {
 			}
 		});
 
-		// 등록 버튼
-		$('#btnAdd').on('click', function() {
-			openDetail(null);
-		});
-
 		// 선택 삭제 버튼
 		$('#btnDeleteSelected').on('click', deleteSelected);
 
@@ -364,10 +378,11 @@ $(document).ready(function() {
 			saveForm();
 		});
 
-
-
 		// 단건 삭제 버튼
 		$('#btnDelete').on('click', deleteItem);
+
+		// 재수집 버튼
+		$('#btnRecollect').on('click', recollectItem);
 
 		// 컨텐츠수집기 버튼
 		$('#btnCollector').on('click', function() {
@@ -389,7 +404,6 @@ $(document).ready(function() {
 		$(document).on('change', '.content-checkbox', function() {
 			updateSelectAllCheckbox();
 		});
-
 	}
 
 
@@ -656,6 +670,60 @@ $(document).ready(function() {
 		var logHtml = '<div class="' + colorClass + '">[' + time + '] ' + escapeHtml(message) + '</div>';
 		$('#collectorLog').append(logHtml);
 		$('#collectorLog').scrollTop($('#collectorLog')[0].scrollHeight);
+	}
+
+
+	/**
+	 * 콘텐츠 재수집
+	 */
+	function recollectItem() {
+		var idx = $('#formIdx').val();
+		if (!idx) {
+			showToast('콘텐츠 정보가 없습니다.', 'warning');
+			return;
+		}
+
+		var sourceUrls = $('#formSourceUrls').val().trim();
+		if (!sourceUrls) {
+			showToast('수집할 URL이 없습니다.', 'warning');
+			return;
+		}
+
+		showConfirmModal('재수집 확인', '현재 URL 목록을 기반으로 콘텐츠를 다시 수집하시겠습니까?\n기존 분석 결과가 새로운 결과로 대체됩니다.', function() {
+			var $btn = $('#btnRecollect');
+			$btn.prop('disabled', true).find('.spinner-border').removeClass('d-none');
+
+			ajaxRequest({
+				url: '/contents/recollect',
+				type: 'POST',
+				timeout: 180000,
+				data: { idx: idx },
+				success: function(res) {
+					$btn.prop('disabled', false).find('.spinner-border').addClass('d-none');
+
+					if (res.success) {
+						showToast(res.message, 'success');
+
+						// 폼 데이터 갱신
+						if (res.data) {
+							$('#formDescription').val(res.data.description || '');
+							if (res.data.contents_json) {
+								$('#formContentsJson').val(JSON.stringify(res.data.contents_json, null, 2));
+							}
+						}
+
+						refreshGrid();
+					} else {
+						showToast(res.message, 'error');
+					}
+				},
+				error: function(xhr, status) {
+					$btn.prop('disabled', false).find('.spinner-border').addClass('d-none');
+					var errorMsg = status === 'timeout' ? '요청 시간 초과' : '서버 통신 실패';
+					showToast(errorMsg, 'error');
+				}
+			});
+		});
 	}
 
 });
